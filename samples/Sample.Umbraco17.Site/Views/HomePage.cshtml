@@ -1,0 +1,33 @@
+@using Umbraco.Cms.Web.Common.PublishedModels;
+@inherits Umbraco.Cms.Web.Common.Views.UmbracoViewPage<ContentModels.HomePage>
+@using ContentModels = Umbraco.Cms.Web.Common.PublishedModels;
+@using Knowit.Umbraco.Calendar.Core.Models
+@{
+	Layout = null;
+	// Resolved by the package's value converter from the "Calendar Picker" property.
+	var calendar = Model.Value<CalendarRef>("eventCalendar");
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>@Model.Name</title>
+	<style>
+		body { font-family: system-ui, sans-serif; max-width: 920px; margin: 3rem auto; padding: 0 1rem; }
+	</style>
+</head>
+<body>
+	<h1>@Model.Name</h1>
+
+	@if (calendar is not null)
+	{
+		@* Month-grid calendar (pass view = "list" for an agenda list instead). *@
+		@await Component.InvokeAsync("KnowitCalendar", new { calendar, view = "month" })
+	}
+	else
+	{
+		<p>No calendar selected on this page.</p>
+	}
+</body>
+</html>

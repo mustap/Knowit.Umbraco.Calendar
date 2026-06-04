@@ -1,0 +1,31 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+artifacts/
+*.nupkg
+TestResults/
+
+# Node / TypeScript client
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Umbraco runtime (sample site)
+samples/**/umbraco/Data/
+samples/**/umbraco/Logs/
+samples/**/*.sqlite.db
+samples/**/appsettings.Local.json
+
+# Secrets — never commit
+**/secrets.json
+*.pfx
+.env
+# Google service-account keys (contain a private key)
+api-project-*.json
+*service-account*.json
+gcal-key*.json
+
+# Claude Code local settings
+.claude/settings.local.json

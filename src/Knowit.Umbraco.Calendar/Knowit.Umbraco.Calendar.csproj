@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- Umbraco package RCL: ship App_Plugins from wwwroot, support MVC views/tag helpers. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+    <IsPackable>true</IsPackable>
+    <PackageId>Knowit.Umbraco.Calendar</PackageId>
+    <Title>Knowit Umbraco Calendar</Title>
+    <Description>Display Google and Microsoft (Teams/Outlook) calendar events in Umbraco 17+. Editors pick a calendar per page; developers configure credentials once.</Description>
+    <PackageTags>umbraco;umbraco-marketplace;calendar;google-calendar;microsoft-graph;teams</PackageTags>
+    <!-- Static web assets (App_Plugins) are served at this path in the consuming site. -->
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms.Web.Website" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" />
+    <PackageReference Include="Umbraco.Cms.Api.Delivery" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Knowit.Umbraco.Calendar.Core\Knowit.Umbraco.Calendar.Core.csproj" />
+  </ItemGroup>
+
+</Project>

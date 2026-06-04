@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Sample.Umbraco17.Site/Sample.Umbraco17.Site.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Knowit.Umbraco.Calendar.Core/Knowit.Umbraco.Calendar.Core.csproj" />
+    <Project Path="src/Knowit.Umbraco.Calendar/Knowit.Umbraco.Calendar.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Knowit.Umbraco.Calendar.Core.Tests/Knowit.Umbraco.Calendar.Core.Tests.csproj" />
+    <Project Path="tests/Knowit.Umbraco.Calendar.Integration.Tests/Knowit.Umbraco.Calendar.Integration.Tests.csproj" />
+  </Folder>
+</Solution>

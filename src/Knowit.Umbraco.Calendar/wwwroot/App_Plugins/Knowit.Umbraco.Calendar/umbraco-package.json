@@ -1,0 +1,21 @@
+{
+  "$schema": "../../umbraco-package-schema.json",
+  "name": "Knowit.Umbraco.Calendar",
+  "version": "0.1.0",
+  "allowPublicAccess": false,
+  "extensions": [
+    {
+      "type": "propertyEditorUi",
+      "alias": "Knowit.Umbraco.Calendar.PickerUi",
+      "name": "Calendar Picker",
+      "element": "/App_Plugins/Knowit.Umbraco.Calendar/dist/index.js",
+      "elementName": "knowit-calendar-picker",
+      "meta": {
+        "label": "Calendar Picker",
+        "icon": "icon-calendar",
+        "group": "pickers",
+        "propertyEditorSchemaAlias": "Knowit.Umbraco.Calendar.Picker"
+      }
+    }
+  ]
+}

@@ -1,0 +1,298 @@
+@model Knowit.Umbraco.Calendar.Rendering.CalendarRenderModel
+@using System.Globalization
+@using Knowit.Umbraco.Calendar.Core.Models
+@using Knowit.Umbraco.Calendar.Rendering
+
+@*
+    Default calendar rendering: month / day / year / agenda views with a switcher, navigation,
+    and a click-to-open detail dialog. Override by placing your own file at
+    Views/Shared/Components/KnowitCalendar/Default.cshtml in the consuming site.
+*@
+
+@{
+    var today = DateOnly.FromDateTime(DateTime.Today);
+
+    string Link(string view, DateOnly date)
+        => $"?kcView={view}&kcDate={date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+    string DateLabel(CalendarEvent e) => e.IsAllDay
+        ? e.Start.UtcDateTime.ToString("D")
+        : $"{e.Start.ToLocalTime():f} – {e.End.ToLocalTime():t}";
+
+    string TimeLabel(CalendarEvent e) => e.IsAllDay ? "All day" : e.Start.ToLocalTime().ToString("t");
+
+    string ActiveIf(string view) => Model.View == view ? " is-active" : string.Empty;
+}
+
+<div class="knowit-calendar" data-calendar="@Model.Calendar.DisplayName">
+
+    <div class="knowit-calendar__bar">
+        <div class="knowit-calendar__nav">
+            @if (Model.View != CalendarRenderModel.List)
+            {
+                <a class="knowit-calendar__navbtn" href="@Link(Model.View, Model.PrevAnchor)" rel="nofollow" aria-label="Previous">‹</a>
+                <span class="knowit-calendar__month">@Model.HeaderLabel</span>
+                <a class="knowit-calendar__navbtn" href="@Link(Model.View, Model.NextAnchor)" rel="nofollow" aria-label="Next">›</a>
+                <a class="knowit-calendar__navbtn knowit-calendar__today-link" href="@Link(Model.View, today)" rel="nofollow">Today</a>
+            }
+            else
+            {
+                <span class="knowit-calendar__month">@Model.HeaderLabel</span>
+            }
+        </div>
+        <div class="knowit-calendar__views">
+            <a class="knowit-calendar__viewbtn@(ActiveIf(CalendarRenderModel.Day))" href="@Link(CalendarRenderModel.Day, Model.Anchor)" rel="nofollow">Day</a>
+            <a class="knowit-calendar__viewbtn@(ActiveIf(CalendarRenderModel.Month))" href="@Link(CalendarRenderModel.Month, Model.Anchor)" rel="nofollow">Month</a>
+            <a class="knowit-calendar__viewbtn@(ActiveIf(CalendarRenderModel.Year))" href="@Link(CalendarRenderModel.Year, Model.Anchor)" rel="nofollow">Year</a>
+            <a class="knowit-calendar__viewbtn@(ActiveIf(CalendarRenderModel.List))" href="@Link(CalendarRenderModel.List, Model.Anchor)" rel="nofollow">Agenda</a>
+        </div>
+    </div>
+
+    @switch (Model.View)
+    {
+        case CalendarRenderModel.Month:
+            <div class="knowit-calendar__grid">
+                @for (var i = 0; i < 7; i++)
+                {
+                    <div class="knowit-calendar__weekday">@Model.GridStart.AddDays(i).ToString("ddd")</div>
+                }
+                @foreach (var day in Model.GridDays())
+                {
+                    var dayClass = "knowit-calendar__day";
+                    if (day.Month != Model.MonthStart.Month) { dayClass += " is-other-month"; }
+                    if (day == today) { dayClass += " is-today"; }
+                    if (day < today) { dayClass += " is-past"; }
+                    <div class="@dayClass">
+                        <a class="knowit-calendar__daynum" href="@Link(CalendarRenderModel.Day, day)" rel="nofollow">@day.Day</a>
+                        @foreach (var ev in Model.EventsOn(day))
+                        {
+                            var chipClass = ev.OnlineMeeting is not null ? "knowit-calendar__event has-meeting" : "knowit-calendar__event";
+                            <button type="button" class="@chipClass" data-kc-open="@Model.DomId(ev)" title="@ev.Title">
+                                @if (!ev.IsAllDay)
+                                {
+                                    <span class="knowit-calendar__chiptime">@ev.Start.ToLocalTime().ToString("t")</span>
+                                }
+                                <span class="knowit-calendar__chiptitle">@ev.Title</span>
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+            break;
+
+        case CalendarRenderModel.Day:
+            {
+                var dayEvents = Model.EventsOn(Model.Anchor).ToList();
+                <div class="knowit-calendar__dayview">
+                    @if (dayEvents.Count == 0)
+                    {
+                        <p class="knowit-calendar__empty">No events on this day.</p>
+                    }
+                    else
+                    {
+                        foreach (var ev in dayEvents)
+                        {
+                            <button type="button" class="knowit-calendar__row@(ev.OnlineMeeting is not null ? " has-meeting" : "")" data-kc-open="@Model.DomId(ev)">
+                                <span class="knowit-calendar__rowtime">@TimeLabel(ev)</span>
+                                <span class="knowit-calendar__rowbody">
+                                    <span class="knowit-calendar__rowtitle">@ev.Title</span>
+                                    @if (!string.IsNullOrEmpty(ev.Location))
+                                    {
+                                        <span class="knowit-calendar__rowloc">@ev.Location</span>
+                                    }
+                                </span>
+                            </button>
+                        }
+                    }
+                </div>
+            }
+            break;
+
+        case CalendarRenderModel.Year:
+            <div class="knowit-calendar__year">
+                @foreach (var month in Model.MonthsOfYear())
+                {
+                    <div class="knowit-calendar__minimonth">
+                        <a class="knowit-calendar__mininame" href="@Link(CalendarRenderModel.Month, month)" rel="nofollow">@month.ToString("MMM")</a>
+                        <div class="knowit-calendar__minigrid">
+                            @foreach (var day in Model.GridDaysOf(month))
+                            {
+                                if (day.Month != month.Month)
+                                {
+                                    <span class="knowit-calendar__minicell is-blank"></span>
+                                }
+                                else
+                                {
+                                    var count = Model.CountOn(day);
+                                    var cls = "knowit-calendar__minicell";
+                                    if (count > 0) { cls += " has-events"; }
+                                    if (day == today) { cls += " is-today"; }
+                                    if (count > 0)
+                                    {
+                                        <a class="@cls" href="@Link(CalendarRenderModel.Day, day)" rel="nofollow" title="@count event(s) on @day.ToString("D")">
+                                            <span class="knowit-calendar__miniday">@day.Day</span>
+                                            <span class="knowit-calendar__minicount">@count</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="@cls"><span class="knowit-calendar__miniday">@day.Day</span></span>
+                                    }
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+            break;
+
+        default: // list / agenda
+            @if (Model.Events.Count == 0)
+            {
+                <p class="knowit-calendar__empty">No upcoming events.</p>
+            }
+            else
+            {
+                <ul class="knowit-calendar__list">
+                    @foreach (var ev in Model.Events)
+                    {
+                        <li class="knowit-calendar__item">
+                            <button type="button" class="knowit-calendar__title" data-kc-open="@Model.DomId(ev)">@ev.Title</button>
+                            <time class="knowit-calendar__start" datetime="@ev.Start.ToString("o")">@DateLabel(ev)</time>
+                            @if (!string.IsNullOrEmpty(ev.Location))
+                            {
+                                <span class="knowit-calendar__location">@ev.Location</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            break;
+    }
+
+    @* Detail dialogs (not needed in year view, which links day cells to the day view). *@
+    @if (Model.View != CalendarRenderModel.Year)
+    {
+        foreach (var ev in Model.Events)
+        {
+            <dialog id="@Model.DomId(ev)" class="knowit-calendar__dialog" itemscope itemtype="https://schema.org/Event">
+                <form method="dialog" class="knowit-calendar__dialog-close-form">
+                    <button class="knowit-calendar__dialog-close" aria-label="Close" data-kc-close>&times;</button>
+                </form>
+                <h3 class="knowit-calendar__dialog-title" itemprop="name">@ev.Title</h3>
+                <p class="knowit-calendar__dialog-when">
+                    <time itemprop="startDate" datetime="@ev.Start.ToString("o")">@DateLabel(ev)</time>
+                    <meta itemprop="endDate" content="@ev.End.ToString("o")" />
+                </p>
+                @if (!string.IsNullOrEmpty(ev.Location))
+                {
+                    <p class="knowit-calendar__dialog-loc" itemprop="location">📍 @ev.Location</p>
+                }
+                @if (!string.IsNullOrEmpty(ev.OrganizerName))
+                {
+                    <p class="knowit-calendar__dialog-org">👤 @ev.OrganizerName</p>
+                }
+                @if (ev.Categories.Count > 0)
+                {
+                    <p class="knowit-calendar__dialog-cats">@string.Join(", ", ev.Categories)</p>
+                }
+                @if (!string.IsNullOrEmpty(ev.Description))
+                {
+                    <div class="knowit-calendar__dialog-desc" itemprop="description">@Html.Raw(ev.Description)</div>
+                }
+                <div class="knowit-calendar__dialog-actions">
+                    @if (ev.OnlineMeeting is not null)
+                    {
+                        <a class="knowit-calendar__btn is-primary" href="@ev.OnlineMeeting.JoinUrl" target="_blank" rel="noopener noreferrer">@(ev.OnlineMeeting.ProviderDisplayName ?? "Join online")</a>
+                    }
+                    @if (!string.IsNullOrEmpty(ev.HtmlLink))
+                    {
+                        <a class="knowit-calendar__btn" href="@ev.HtmlLink" target="_blank" rel="noopener noreferrer">Open in calendar</a>
+                    }
+                </div>
+            </dialog>
+        }
+    }
+</div>
+
+<style>
+    .knowit-calendar { --kc-border: #e3e3e8; --kc-muted: #8a8a93; --kc-accent: #2152ff; --kc-today: #eef3ff; font-family: system-ui, sans-serif; color: #1b1b1f; }
+    .knowit-calendar__bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .6rem; flex-wrap: wrap; }
+    .knowit-calendar__nav { display: flex; align-items: center; gap: .4rem; }
+    .knowit-calendar__month { font-size: 1.2rem; font-weight: 700; min-width: 8rem; text-align: center; }
+    .knowit-calendar__navbtn { text-decoration: none; color: var(--kc-accent); border: 1px solid var(--kc-border); border-radius: 6px; padding: .15rem .55rem; font-size: 1rem; line-height: 1.4; }
+    .knowit-calendar__navbtn:hover { background: var(--kc-today); }
+    .knowit-calendar__today-link { font-size: .8rem; }
+    .knowit-calendar__views { display: flex; gap: .25rem; }
+    .knowit-calendar__viewbtn { text-decoration: none; color: var(--kc-muted); border: 1px solid var(--kc-border); border-radius: 6px; padding: .2rem .6rem; font-size: .82rem; }
+    .knowit-calendar__viewbtn.is-active { background: var(--kc-accent); color: #fff; border-color: var(--kc-accent); }
+
+    .knowit-calendar__grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--kc-border); border-radius: 8px; overflow: hidden; }
+    .knowit-calendar__weekday { background: #f6f6f8; font-size: .75rem; font-weight: 600; text-transform: uppercase; color: var(--kc-muted); text-align: center; padding: .4rem 0; border-bottom: 1px solid var(--kc-border); }
+    .knowit-calendar__day { min-height: 92px; border-right: 1px solid var(--kc-border); border-bottom: 1px solid var(--kc-border); padding: .25rem; display: flex; flex-direction: column; gap: .15rem; }
+    .knowit-calendar__day:nth-child(7n+7) { border-right: 0; }
+    .knowit-calendar__day.is-other-month { background: #fafafb; color: var(--kc-muted); }
+    .knowit-calendar__day.is-today { background: var(--kc-today); }
+    .knowit-calendar__day.is-past .knowit-calendar__daynum { color: #b3b3b8; }
+    .knowit-calendar__day.is-past .knowit-calendar__event { opacity: .55; }
+    .knowit-calendar__daynum { font-size: .8rem; font-weight: 600; align-self: flex-end; text-decoration: none; color: inherit; }
+    .knowit-calendar__day.is-today .knowit-calendar__daynum { background: var(--kc-accent); color: #fff; border-radius: 999px; width: 1.4rem; height: 1.4rem; display: grid; place-items: center; }
+    .knowit-calendar__event { display: block; width: 100%; text-align: left; border: 0; cursor: pointer; background: var(--kc-accent); color: #fff; border-radius: 4px; padding: .1rem .3rem; font-size: .72rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: inherit; }
+    .knowit-calendar__event:hover { filter: brightness(1.08); }
+    .knowit-calendar__event.has-meeting { background: #128a5b; }
+    .knowit-calendar__chiptime { font-weight: 700; margin-right: .2rem; }
+
+    .knowit-calendar__dayview { display: grid; gap: .5rem; }
+    .knowit-calendar__row { display: flex; gap: .8rem; align-items: baseline; width: 100%; text-align: left; border: 0; cursor: pointer; background: #f6f6f8; border-left: 3px solid var(--kc-accent); border-radius: 4px; padding: .5rem .7rem; font: inherit; }
+    .knowit-calendar__row.has-meeting { border-left-color: #128a5b; }
+    .knowit-calendar__rowtime { font-weight: 700; min-width: 5rem; }
+    .knowit-calendar__rowtitle { font-weight: 600; display: block; }
+    .knowit-calendar__rowloc { color: var(--kc-muted); font-size: .85rem; }
+
+    .knowit-calendar__year { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+    .knowit-calendar__minimonth { border: 1px solid var(--kc-border); border-radius: 8px; padding: .5rem; }
+    .knowit-calendar__mininame { display: block; font-weight: 700; margin-bottom: .35rem; text-decoration: none; color: var(--kc-accent); }
+    .knowit-calendar__minigrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+    .knowit-calendar__minicell { font-size: .68rem; text-align: center; padding: .15rem 0; color: #555; text-decoration: none; border-radius: 3px; }
+    .knowit-calendar__minicell.is-blank { visibility: hidden; }
+    .knowit-calendar__minicell.has-events { background: rgba(33, 82, 255, .12); font-weight: 700; color: var(--kc-accent); }
+    .knowit-calendar__minicell.is-today { outline: 1px solid var(--kc-accent); }
+    .knowit-calendar__minicount { font-size: .55rem; font-weight: 700; color: #d42054; vertical-align: super; margin-left: 1px; }
+
+    .knowit-calendar__list { list-style: none; padding: 0; display: grid; gap: .6rem; }
+    .knowit-calendar__item { border-left: 3px solid var(--kc-accent); background: #f6f6f8; padding: .5rem .7rem; border-radius: 4px; }
+    .knowit-calendar__title { font-weight: 700; display: block; border: 0; background: none; padding: 0; cursor: pointer; color: inherit; font: inherit; text-align: left; }
+    .knowit-calendar__title:hover { color: var(--kc-accent); }
+    .knowit-calendar__start, .knowit-calendar__location { color: var(--kc-muted); font-size: .85rem; display: block; }
+    .knowit-calendar__empty { color: var(--kc-muted); }
+
+    .knowit-calendar__dialog { border: 0; border-radius: 12px; padding: 1.5rem; max-width: 460px; width: calc(100% - 2rem); box-shadow: 0 12px 40px rgba(0,0,0,.25); color: #1b1b1f; }
+    .knowit-calendar__dialog::backdrop { background: rgba(0,0,0,.45); }
+    .knowit-calendar__dialog-close-form { float: right; margin: -.5rem -.5rem 0 0; }
+    .knowit-calendar__dialog-close { border: 0; background: none; font-size: 1.5rem; line-height: 1; cursor: pointer; color: var(--kc-muted); }
+    .knowit-calendar__dialog-title { margin: 0 0 .5rem; font-size: 1.25rem; }
+    .knowit-calendar__dialog-when { font-weight: 600; margin: 0 0 .75rem; }
+    .knowit-calendar__dialog-loc, .knowit-calendar__dialog-org, .knowit-calendar__dialog-cats { margin: .25rem 0; color: #444; }
+    .knowit-calendar__dialog-desc { margin: .75rem 0; border-top: 1px solid var(--kc-border); padding-top: .75rem; }
+    .knowit-calendar__dialog-actions { display: flex; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .knowit-calendar__btn { display: inline-block; padding: .45rem .9rem; border-radius: 6px; text-decoration: none; border: 1px solid var(--kc-accent); color: var(--kc-accent); font-size: .9rem; }
+    .knowit-calendar__btn.is-primary { background: var(--kc-accent); color: #fff; }
+</style>
+
+<script>
+    (function () {
+        if (window.__knowitCalendarInit) { return; }
+        window.__knowitCalendarInit = true;
+        document.addEventListener('click', function (e) {
+            var opener = e.target.closest('[data-kc-open]');
+            if (opener) {
+                var dlg = document.getElementById(opener.getAttribute('data-kc-open'));
+                if (dlg && typeof dlg.showModal === 'function') { dlg.showModal(); }
+                return;
+            }
+            if (e.target.matches && e.target.matches('dialog.knowit-calendar__dialog')) {
+                e.target.close();
+            }
+        });
+    })();
+</script>
